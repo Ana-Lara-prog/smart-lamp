@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+   <link rel="manifest" href="manifest.json">
+
+    <script>
+    if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js");
+    }
+    </script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lâmpada Inteligente</title>
+
+  <!-- MQTT.js -->
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+  <style>
+    body { 
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      background: linear-gradient(145deg, #513d8a, #63a5a2, #513d8a);
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+
+    h1 {
+      margin-bottom: 20px;
+    }
+
+    button {
+      padding: 15px;
+      margin: 8px;
+      font-size: 16px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+    }
+
+    input {
+      margin: 10px;
+      width: 200px;
+    }
+
+    .card {
+      background: rgba(0,0,0,0.25);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>💡 Lâmpada Inteligente</h1>
+
+  <div class="card">
+    <h3>Modos</h3>
+    <button onclick="setModo(1)">Automático</button>
+    <button onclick="setModo(2)">Relaxar</button>
+    <button onclick="setModo(3)">Foco</button>
+    <button onclick="setModo(4)">Personalizado</button>
+
+    <hr>
+
+    <h3>Cor Personalizada</h3>
+    <input type="color" id="cor">
+
+    <hr>
+
+    <h3>Luminosidade</h3>
+    <p id="luminosidade">-- %</p>
+  </div>
+
+  <script>
+   
+    // CONFIGURAÇÃO FINAL - FUNCIONANDO!
+    const broker = "ws://98.81.131.236:443";  // WebSocket na porta 443
+    const topicCmd = "/TEF/lamp001/cmd";
+    const topicLum = "/TEF/lamp001/attrs/l";
+
+    const client = mqtt.connect(broker);
+
+    client.on("connect", () => {
+    console.log("✅ Conectado ao Broker MQTT via WebSocket (porta 443)!");
+    client.subscribe(topicLum);
+    });
+
+    client.on("error", (err) => {
+     console.error("❌ Erro MQTT:", err);
+    } );
+
+    client.on("message", (topic, message) => {
+      if (topic === topicLum) {
+        const luminosidade = message.toString();
+        document.getElementById("luminosidade").innerText = luminosidade + " %";
+        console.log("📊 Luminosidade atualizada:", luminosidade);
+      }
+    });
+   
+    // FUNÇÕES DE CONTROLE
+
+    function setModo(modo) {
+      client.publish(topicCmd, `setMode|${modo}`);
+      console.log("Modo enviado:", modo);
+    }
+
+    function setRGB(r, g, b) {
+      client.publish(topicCmd, `setRGB|${r},${g},${b}`);
+      setModo(4); // força modo personalizado
+    }
+
+  
+    // SELETOR DE COR
+   
+    document.getElementById("cor").oninput = (e) => {
+      const hex = e.target.value;
+      const r = parseInt(hex.substr(1, 2), 16);
+      const g = parseInt(hex.substr(3, 2), 16);
+      const b = parseInt(hex.substr(5, 2), 16);
+
+      setRGB(r, g, b);
+    };
+  </script>
+
+</body>
+</html>
